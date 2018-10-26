@@ -7,9 +7,15 @@ import (
 )
 
 
-var MANAGER = session.InitManager()
+var SessionManager = session.InitManager()
 
 
 func main() {
-	fmt.Println("Alles klar")
+	uuid := SessionManager.AddSession("localhost")
+	fmt.Println("Opened session", uuid)
+	json, _ := SessionManager.ToJson()
+	fmt.Println(string(json))
+	SessionManager.ProcessSession(uuid)
+	fmt.Println("Checksum:", SessionManager.CheckSum(uuid))
+	SessionManager.RemoveSession(uuid)
 }

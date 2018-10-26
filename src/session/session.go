@@ -11,26 +11,26 @@ import (
 
 
 type BatchSession struct {
-	_uuid              string
-	_started           time.Time
-	_ended             time.Time
-	_checksum          int
-	_rc                *rabbit.RabbitConnection
-	_q                 *rabbit.RabbitQ
-	_host              string
+	UUID              string                       `json:"uuid"`
+	Started           time.Time                    `json:"started"`
+	Ended             time.Time                    `json:"ended"`
+	Checksum          int                          `json:"checksum"`
+	_rc                *rabbit.RabbitConnection    `json:"-"`
+	_q                 *rabbit.RabbitQ             `json:"-"`
+	Host              string                       `json:"host"`
 }
 func (bs *BatchSession) Init(host string) {
-	bs._host = host
+	bs.Host = host
 	rc   := rabbit.ConnectToRabbitMQ(host)
 	if (!rc.IsConnected()) {
 		log.Fatalf("We are not connected, aborting")
 		return
 	}
 	u, _ := uuid.NewV4()
-	bs._uuid = u.String()
-	bs._started = time.Now()
+	bs.UUID = u.String()
+	bs.Started = time.Now()
 	bs._rc = rc
-	q := bs._rc.DeclareQ(bs._uuid)
+	q := bs._rc.DeclareQ(bs.UUID)
 	bs._q = &q
 }
 func (bs *BatchSession) Close() {
@@ -42,7 +42,7 @@ func (bs *BatchSession) Close() {
 	}
 	bs._rc = nil
 	bs._q = nil
-	bs._ended = time.Now()
+	bs.Ended = time.Now()
 }
 func (bs *BatchSession) FetchAll(messages chan string) {
 	if (bs._rc == nil) {
@@ -55,7 +55,7 @@ func (bs *BatchSession) FetchAll(messages chan string) {
 			select {
 				case d := <- msgs:
 					msg := string(d.Body[:])
-					bs._checksum++
+					bs.Checksum++
 					messages <- msg
 				case <- time.After(10 * time.Second):
 					log.Printf("Timed out")
@@ -66,7 +66,7 @@ func (bs *BatchSession) FetchAll(messages chan string) {
 	}()
 }
 func (bs *BatchSession) ID() string {
-	return bs._uuid
+	return bs.UUID
 }
 
 

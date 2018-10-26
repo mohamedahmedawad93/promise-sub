@@ -3,29 +3,37 @@ package session
 
 import (
 	"fmt"
+	"encoding/json"
 )
 
 
 type SessionManager struct {
-	__sessions      map[string] *BatchSession
+	Sessions      map[string] *BatchSession    `json:"sessions"`
 }
 
 
-func (sm *SessionManager) addSession(host string) {
+func (sm *SessionManager) AddSession(host string) string {
 	bs := NewSession("localhost")
-	sm.__sessions[bs.ID()] = bs
+	sm.Sessions[bs.ID()] = bs
+	return bs.ID()
 }
 
 
-func (sm *SessionManager) removeSession(uuid string) {
-	bs := sm.__sessions[uuid]
+func (sm *SessionManager) RemoveSession(uuid string) {
+	bs, ok := sm.Sessions[uuid]
+	if(!ok) {
+		return
+	}
 	bs.Close()
-	sm.__sessions[uuid] = nil
+	delete(sm.Sessions, uuid)
 }
 
 
-func (sm *SessionManager) processSession(uuid string) {
-	bs := sm.__sessions[uuid]
+func (sm *SessionManager) ProcessSession(uuid string) {
+	bs, ok := sm.Sessions[uuid]
+	if (!ok) {
+		return
+	}
 	messages := make(chan string)
 	bs.FetchAll(messages)
 	for msg := range messages {
@@ -35,12 +43,21 @@ func (sm *SessionManager) processSession(uuid string) {
 
 
 func (sm *SessionManager) CheckSum(uuid string) int {
-	bs := sm.__sessions[uuid]
-	return bs._checksum
+	bs, ok := sm.Sessions[uuid]
+	if(!ok) {
+		return 0
+	}
+	return bs.Checksum
+}
+
+
+func (sm *SessionManager) ToJson() ([]byte, error) {
+	return json.Marshal(sm)
 }
 
 
 func InitManager() *SessionManager {
 	sm := SessionManager{}
+	sm.Sessions = make(map[string] *BatchSession)
 	return &sm
 }
