@@ -2,11 +2,14 @@ package main
 
 
 import (
-	"fmt"
 	"rabbit"
+	"fmt"
 )
 
 
 func main() {
-	fmt.Println("Hello world " + rabbit.DummyFunction())
+	rc := rabbit.ConnectToRabbitMQ("localhost")
+	defer rc.Close()
+	fmt.Println("Host is " + rc.Host())
+	fmt.Println("message " + rc.Fetch("some_q"))
 }
