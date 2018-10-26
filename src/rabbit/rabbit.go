@@ -1,5 +1,6 @@
 package rabbit
 
+
 import (
 	"github.com/streadway/amqp"
 	"log"
@@ -7,12 +8,24 @@ import (
 )
 
 
-type RabbitConnection struct {
-	_conn        *amqp.Connection
-	_host        string
+func failOnError(err error, msg string) {
+  if err != nil {
+    log.Fatalf("%s: %s", msg, err)
+  }
 }
 
 
+type RabbitQ struct {
+	_q          *amqp.Queue
+	_name 		string
+}
+
+
+type RabbitConnection struct {
+	_conn        *amqp.Connection
+	_chan        *amqp.Channel
+	_host        string
+}
 func (rc *RabbitConnection) Start() {
 	if (rc._conn != nil) {
 		rc.Close()
@@ -22,42 +35,83 @@ func (rc *RabbitConnection) Start() {
 	}
 	conn, err := amqp.Dial(fmt.Sprintf("amqp://guest:guest@%s:5672/", rc._host))
 	if (err != nil) {
-		log.Fatalf("Couldnt connect to rabbitmq")
-		conn.Close()
+		rc.Close()
 		return
 	}
 	rc._conn = conn
+	ch, ch_err := conn.Channel()
+	if (ch_err != nil) {
+		log.Fatalf("Couldnt connect to rabbitmq")
+		rc.Close()
+		return
+	}
+	rc._chan = ch
 }
-
-
-func ConnectToRabbitMQ(host string) *RabbitConnection {
-	rc := RabbitConnection{nil, host}
-	rc.Start()
-	return &rc
-}
-
-
-func (rc RabbitConnection) Close() {
+func (rc *RabbitConnection) Close() {
     if (rc._conn == nil) {
     	return
     }
     rc._conn.Close()
     rc._conn = nil
 }
-
-func (rc RabbitConnection) Restart() {
+func (rc *RabbitConnection) Restart() {
 	rc.Close()
 	rc.Start()
 }
-
-func (rc RabbitConnection) IsConnected() bool {
+func (rc *RabbitConnection) IsConnected() bool {
 	return rc._conn != nil
 }
-
-func (rc RabbitConnection) Host() string {
+func (rc *RabbitConnection) Host() string {
 	return rc._host
 }
+func (rc *RabbitConnection) DeclareQ(queue string) RabbitQ {
+	q, err := rc._chan.QueueDeclare(
+	  queue,   // name
+	  false,   // durable
+	  false,   // delete when unused
+	  false,   // exclusive
+	  false,   // no-wait
+	  nil,     // arguments
+	)
+	if (err != nil) {
+		log.Fatalf("Couldnt declare channel")
+	}
+	return RabbitQ{&q, queue}
+}
+func (rc *RabbitConnection) QExists(q *RabbitQ) bool {
+	return true
+}
+func (rc *RabbitConnection) RemQ(q *RabbitQ) {
+	_, err := rc._chan.QueueDelete(
+		q._name,  // queue
+		false,    // ifUnused
+		false,    // ifEmpty
+		true ,    // noWait
+	)
+	if (err != nil) {
+		fmt.Println("Couldnt remove queue")
+	}
+}
+func (rc *RabbitConnection) Messages(q *RabbitQ) <- chan amqp.Delivery {
+	msgs, err := rc._chan.Consume(
+	  q._name, // queue
+	  "",      // consumer
+	  true,    // auto-ack
+	  false,   // exclusive
+	  false,   // no-local
+	  false,   // no-wait
+	  nil,     // args
+	)
+	if (err != nil) {
+		log.Fatalf("Couldnt consume")
+	}
+	return msgs
+}
 
-func (rc RabbitConnection) Fetch(queue string) string {
-	return "some dummy string"
+
+func ConnectToRabbitMQ(host string) *RabbitConnection {
+	rc := RabbitConnection{}
+	rc._host = host
+	rc.Start()
+	return &rc
 }

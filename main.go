@@ -2,14 +2,18 @@ package main
 
 
 import (
-	"rabbit"
+	"session"
 	"fmt"
 )
 
 
 func main() {
-	rc := rabbit.ConnectToRabbitMQ("localhost")
-	defer rc.Close()
-	fmt.Println("Host is " + rc.Host())
-	fmt.Println("message " + rc.Fetch("some_q"))
+	bs := session.New("localhost")
+	defer bs.Close()
+	fmt.Println("UUID: " + bs.ID())
+	messages := make(chan string)
+	bs.FetchAll(messages)
+	for msg := range messages {
+		fmt.Println("received message:", msg)
+	}
 }
