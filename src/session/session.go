@@ -55,6 +55,7 @@ func (bs *BatchSession) FetchAll(messages chan string) {
 			select {
 				case d := <- msgs:
 					msg := string(d.Body[:])
+					bs._checksum++
 					messages <- msg
 				case <- time.After(10 * time.Second):
 					log.Printf("Timed out")
@@ -69,7 +70,7 @@ func (bs *BatchSession) ID() string {
 }
 
 
-func New(host string) *BatchSession {
+func NewSession(host string) *BatchSession {
 	bs := BatchSession{}
 	bs.Init(host)
 	return &bs
