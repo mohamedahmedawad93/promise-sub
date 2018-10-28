@@ -1,6 +1,8 @@
 # promise-sub
 A golang webserver consumer implementation of the subscriber of promise-pub. The reason golang is used here is its known concurrent capabillities making it a great fit for the use case where I need to asyncronously receive thousands of messages through a message broker and save them to persistent data store.
 
+This webserver listens on port `8080`
+
 ## Protocols
 It makes more sense to define protocols for machines to communicate with each other. This consumer implements two protocols for its users:
   1. Live protocol: the messages are processed in real-time one by one.
