@@ -7,7 +7,14 @@ import (
 	"time"
 	"log"
 	"fmt"
+	"encoding/json"
 )
+
+
+type Message struct {
+	Name              string                       `json: "name"`
+	Mail              string                       `json: "mail"`
+}
 
 
 type BatchSession struct {
@@ -17,9 +24,10 @@ type BatchSession struct {
 	Checksum          int                          `json:"checksum"`
 	Saved             int                          `json:"saved"`
 	Host              string                       `json:"host"`
-	_rc                *rabbit.RabbitConnection    `json:"-"`
-	_q                 *rabbit.RabbitQ             `json:"-"`
-	_done              chan bool                   `json:"-"`
+	_rc               *rabbit.RabbitConnection     `json:"-"`
+	_q                *rabbit.RabbitQ              `json:"-"`
+	_done             chan bool                    `json:"-"`
+	_processing       bool                         `json:"-"`
 }
 func (bs *BatchSession) Init(host string) {
 	bs.Host = host
@@ -46,13 +54,13 @@ func (bs *BatchSession) Close() {
 	bs._rc = nil
 	bs._q = nil
 	bs.Ended = time.Now()
-	select {
+/*	select {
 		case bs._done <- true:
 		default:
-	}
+	}*/
 	
 }
-func (bs *BatchSession) FetchAll(client_messages chan string, timeout int) {
+func (bs *BatchSession) FetchAll(client_messages chan Message, timeout int) {
 	if (bs._rc == nil) {
 		return
 	}
@@ -62,13 +70,13 @@ func (bs *BatchSession) FetchAll(client_messages chan string, timeout int) {
 	go func() {
 		for {
 			select {
-				case msg := <- msgs:
+				case msg_string := <- msgs:
 					bs.Checksum++
-					fmt.Println("received", msg)
-					client_messages <- msg
-				case <- bs._done:
-					close(client_messages)
-					return
+					msg := Message{}
+					err := json.Unmarshal([]byte(msg_string), &msg)
+					if err == nil {
+						client_messages <- msg
+					}
 				case <- time.After(time.Duration(timeout) * time.Second):
 					log.Printf("Timed out")
 					close(client_messages)

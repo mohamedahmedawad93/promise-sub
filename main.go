@@ -28,9 +28,13 @@ func rmSession(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Please supply a uuid")
 		return
 	}
-	SessionManager.RemoveSession(uuid[0])
+	session, success := SessionManager.RemoveSession(uuid[0])
 	fmt.Println("removed session", uuid)
-	fmt.Fprintf(w, "OK")
+	if success {
+		fmt.Fprintf(w, string(session))
+	} else {
+		fmt.Fprintf(w, "ERROR")
+	}
 }
 
 
@@ -110,5 +114,6 @@ func main() {
 	http.HandleFunc("/process/", processSession)
 	http.HandleFunc("/getSession/", getSession)
 	http.HandleFunc("/health/", healthCheck)
+	fmt.Println("listening on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
