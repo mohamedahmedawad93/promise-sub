@@ -1,4 +1,16 @@
 package main
+/*
+This is the main entry point for the program
+
+In here we only define the endpoints and their handlers
+	GET /create/ 			  creates new session and returns the session object
+	GET /remove/?uuid=... 	  removes a session given a mandatory uuid in the querystring
+	GET /list/ 				  lists all available sessions
+	GET /process/?uuid=... 	  starts listening on the session queue given a mandatory uuid in the querystring
+								by processing we mean consume all messages and write them to the database
+	GET /getSession/?uuid=... gets the session object given a mandatory uuid in the querystring
+	GET /health/ 			  Just checks that the server is alive
+*/
 
 
 import (
@@ -11,9 +23,14 @@ import (
 )
 
 
+// Instantiate the ServerManager object
+// It is really important to note that the server should only have one ServerManager instance
+// It is not straight forward to implement a singletone struct like the Java world, so we just create one instance like this
 var SessionManager = session.InitManager()
 
 
+// GET /create/ handler
+// takes no input and returns a session object as json
 func addSession(w http.ResponseWriter, r *http.Request) {
 	session := SessionManager.AddSession("localhost")
 	b, _ := json.Marshal(session)
@@ -22,6 +39,10 @@ func addSession(w http.ResponseWriter, r *http.Request) {
 }
 
 
+// GET /remove/?uuid=... handler
+// takes uuid as a mandatory input and removes a session
+// returns either the removed session object as json or ERROR as a string in case that the session doesn't exist
+// We should note here that in case the session is under processing then we block until the whole session is processed
 func rmSession(w http.ResponseWriter, r *http.Request) {
 	uuid, ok := r.URL.Query()["uuid"]
 	if (!ok) {
@@ -38,6 +59,8 @@ func rmSession(w http.ResponseWriter, r *http.Request) {
 }
 
 
+// GET /list/ handler
+// takes no input and returns all sessions available in the SessionManager
 func listSession(w http.ResponseWriter, r *http.Request) {
 	json, err := SessionManager.ToJson()
 	if(err != nil) {
@@ -48,6 +71,15 @@ func listSession(w http.ResponseWriter, r *http.Request) {
 }
 
 
+// GET /process/?uuid=...&mode=live|batch&timeout=[0...] handler
+// takes a mandatory uuid input and returns either OK as string in case of success or error message
+// takes optional mode argument in the query string. mode should be either live or batch. default is live.
+// takes optional timeout argument in the query string. default is 10 seconds. Timeout is the duration in seconds
+// 		where the session should terminate after x seconds after the session has started processing
+// tells the session manager to start listening on this session queue
+// In case the client wishes to go in live mode then we don't block and return immediately OK
+// And in the case of batch mode we block until we process all the messages and timeout
+// by processing we mean consuming the messages from rabbitmq queue, parsing them and writing them to the database
 func processSession(w http.ResponseWriter, r *http.Request) {
 	_uuid, uok := r.URL.Query()["uuid"]
 	if (!uok) {
@@ -67,20 +99,27 @@ func processSession(w http.ResponseWriter, r *http.Request) {
 		mode = _mode[0]
 	}	
 	fmt.Println("Processing session with", timeout, uuid, mode)
+	// now if we are going to live mode then we spawn a new goroutine and return immediately
+	// otherwise if we are in batch mode then we block until we process all messages
+	// else we return an error message stating we don't know how to handle the given mode
 	if mode == "live" {
 		fmt.Println("Running in live mode")
-		go SessionManager.ProcessSession(uuid, timeout)
+		go SessionManager.ProcessSession(uuid, timeout) // don't block
 	} else if mode == "batch"{
 		fmt.Println("Running in batch mode")
-		SessionManager.ProcessSession(uuid, timeout)
+		SessionManager.ProcessSession(uuid, timeout) // block
 	} else {
-		fmt.Fprintf(w, "Wrong mode supplied, mode should be `batch` or `live`")
+		fmt.Fprintf(w, "Wrong mode supplied, mode should be `batch` or `live`") // undefined mode is given
+		return
 	}
 	fmt.Println("Done processing for", uuid)
 	fmt.Fprintf(w, "OK")
 }
 
 
+// GET /getSession handler
+// takes a mandatory UUID input in the query string
+// returns either the session object or error message
 func getSession(w http.ResponseWriter, r *http.Request) {
 	_uuid, uok := r.URL.Query()["uuid"]
 	if (!uok) {
@@ -102,6 +141,8 @@ func getSession(w http.ResponseWriter, r *http.Request) {
 }
 
 
+// GET /health/ handler
+// returns a dummy text response OK
 func healthCheck(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "OK")
 }

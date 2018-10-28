@@ -1,5 +1,7 @@
 package rabbit
-
+/*
+This module is responsible for handling the low-level communication with rabbitmq
+*/
 
 import (
 	"github.com/streadway/amqp"
@@ -15,17 +17,31 @@ func failOnError(err error, msg string) {
 }
 
 
+// a struct that represents the rabbitmq q
 type RabbitQ struct {
+
+	// pointer reference to the queue object
 	_q          *amqp.Queue
+
+	// the name of the queue usually a V4 UUID 
 	_name 		string
 }
 
 
+// a wrapper struct arround the amqp.Channel and amqp.Channel
 type RabbitConnection struct {
+
+	// a pointer to  the connection object
 	_conn        *amqp.Connection
+	
+	// a pointer to the rabbitmq channel
 	_chan        *amqp.Channel
+
+	// the host address of the rabbitmq server
 	_host        string
 }
+
+// this method starts the rabbitmq connection
 func (rc *RabbitConnection) Start() {
 	if (rc._conn != nil) {
 		rc.Close()
@@ -47,6 +63,8 @@ func (rc *RabbitConnection) Start() {
 	}
 	rc._chan = ch
 }
+
+// closes the rabbitmq connection
 func (rc *RabbitConnection) Close() {
     if (rc._conn == nil) {
     	return
@@ -54,16 +72,28 @@ func (rc *RabbitConnection) Close() {
     rc._conn.Close()
     rc._conn = nil
 }
+
+// restart the rabbitmq connection
 func (rc *RabbitConnection) Restart() {
 	rc.Close()
 	rc.Start()
 }
+
+
+// checks if the connection is alive
+// TODO search for a more reliable way
 func (rc *RabbitConnection) IsConnected() bool {
 	return rc._conn != nil
 }
+
+
+// getter method
 func (rc *RabbitConnection) Host() string {
 	return rc._host
 }
+
+
+// declares a new queue
 func (rc *RabbitConnection) DeclareQ(queue string) RabbitQ {
 	q, err := rc._chan.QueueDeclare(
 	  queue,   // name
@@ -78,9 +108,15 @@ func (rc *RabbitConnection) DeclareQ(queue string) RabbitQ {
 	}
 	return RabbitQ{&q, queue}
 }
+
+
+// dummy function
+// TODO actually implement it
 func (rc *RabbitConnection) QExists(q *RabbitQ) bool {
 	return true
 }
+
+// deletes a queue
 func (rc *RabbitConnection) RemQ(q *RabbitQ) {
 	_, err := rc._chan.QueueDelete(
 		q._name,  // queue
@@ -92,6 +128,8 @@ func (rc *RabbitConnection) RemQ(q *RabbitQ) {
 		fmt.Println("Couldnt remove queue")
 	}
 }
+
+// listens to the queue, consumes the messages, parses them as string and redirects them to the user defined channel
 func (rc *RabbitConnection) Messages(q *RabbitQ, string_msgs chan string) {
 	raw_msgs, err := rc._chan.Consume(
 	  q._name, // queue
@@ -108,12 +146,13 @@ func (rc *RabbitConnection) Messages(q *RabbitQ, string_msgs chan string) {
 	fmt.Println("string channel", string_msgs)
 	for d := range raw_msgs {
 		if d.Body != nil {
-			string_msgs <- string(d.Body[:])
+			string_msgs <- string(d.Body[:]) // convert to string and redirect
 		}
 	}
 }
 
 
+// initalizes and starts a new rabbitmq connection given the server host
 func ConnectToRabbitMQ(host string) *RabbitConnection {
 	rc := RabbitConnection{}
 	rc._host = host
