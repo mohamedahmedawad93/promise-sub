@@ -15,9 +15,11 @@ type BatchSession struct {
 	Started           time.Time                    `json:"started"`
 	Ended             time.Time                    `json:"ended"`
 	Checksum          int                          `json:"checksum"`
+	Saved             int                          `json:"saved"`
+	Host              string                       `json:"host"`
 	_rc                *rabbit.RabbitConnection    `json:"-"`
 	_q                 *rabbit.RabbitQ             `json:"-"`
-	Host              string                       `json:"host"`
+	_done              chan bool                   `json:"-"`
 }
 func (bs *BatchSession) Init(host string) {
 	bs.Host = host
@@ -32,6 +34,7 @@ func (bs *BatchSession) Init(host string) {
 	bs._rc = rc
 	q := bs._rc.DeclareQ(bs.UUID)
 	bs._q = &q
+	bs._done = make(chan bool)
 }
 func (bs *BatchSession) Close() {
 	if (bs._q != nil) {
@@ -43,23 +46,32 @@ func (bs *BatchSession) Close() {
 	bs._rc = nil
 	bs._q = nil
 	bs.Ended = time.Now()
+	select {
+		case bs._done <- true:
+		default:
+	}
+	
 }
-func (bs *BatchSession) FetchAll(messages chan string) {
+func (bs *BatchSession) FetchAll(client_messages chan string, timeout int) {
 	if (bs._rc == nil) {
 		return
 	}
-	msgs := bs._rc.Messages(bs._q)
-	fmt.Println("Messages: ", msgs)
+	msgs := make(chan string)
+	go bs._rc.Messages(bs._q, msgs)
+	fmt.Println("msgs", msgs)
 	go func() {
 		for {
 			select {
-				case d := <- msgs:
-					msg := string(d.Body[:])
+				case msg := <- msgs:
 					bs.Checksum++
-					messages <- msg
-				case <- time.After(10 * time.Second):
+					fmt.Println("received", msg)
+					client_messages <- msg
+				case <- bs._done:
+					close(client_messages)
+					return
+				case <- time.After(time.Duration(timeout) * time.Second):
 					log.Printf("Timed out")
-					close(messages)
+					close(client_messages)
 					return
 			}
 		}

@@ -92,8 +92,8 @@ func (rc *RabbitConnection) RemQ(q *RabbitQ) {
 		fmt.Println("Couldnt remove queue")
 	}
 }
-func (rc *RabbitConnection) Messages(q *RabbitQ) <- chan amqp.Delivery {
-	msgs, err := rc._chan.Consume(
+func (rc *RabbitConnection) Messages(q *RabbitQ, string_msgs chan string) {
+	raw_msgs, err := rc._chan.Consume(
 	  q._name, // queue
 	  "",      // consumer
 	  true,    // auto-ack
@@ -105,7 +105,12 @@ func (rc *RabbitConnection) Messages(q *RabbitQ) <- chan amqp.Delivery {
 	if (err != nil) {
 		log.Fatalf("Couldnt consume")
 	}
-	return msgs
+	fmt.Println("string channel", string_msgs)
+	for d := range raw_msgs {
+		if d.Body != nil {
+			string_msgs <- string(d.Body[:])
+		}
+	}
 }
 
 
