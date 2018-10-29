@@ -100,7 +100,6 @@ func InitManager(host string, port string, user string, pass string, dbname stri
 	sm.Sessions = make(map[string] *BatchSession)
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", 
 							user, pass, host, port, dbname)
-	fmt.Println("connStr", connStr)
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatal(err)
