@@ -3,6 +3,30 @@ A golang webserver consumer implementation of the subscriber of promise-pub. The
 
 This webserver listens on port `8080`
 
+## Database
+We are using postgresql database as our backend. Please make sure that the postgres database scheme is identical to the one in scheme.sql
+
+
+## Before you start
+  1. make sure that rabbitmq is up and running
+  2. make sure that postgresql database is up and running
+  3. Make sure that the postgres database has a scheme identical to the one in scheme.sql
+  3. make sure to fully populate the production.ini file
+
+
+## .ini
+#### Make sure to fully populate the production.ini file before running
+  1. rabbit:
+      1. host (mandatory): the address host of the rabbitmq instance
+  2. database:
+      1. host (mandatory)
+      2. port (mandatory)
+      3. dbname (mandatory)
+      4. user (mandatory)
+      5. password (mandatory)
+
+
+
 ## Protocols
 It makes more sense to define protocols for machines to communicate with each other. This consumer implements two protocols for its users:
   1. Live protocol: the messages are processed in real-time one by one.
@@ -35,3 +59,4 @@ Designing a distributed system is hard. thus we need to define how two machines 
   1. github.com/streadway/amqp for rabbitmq connections
   2. github.com/lib/pq for postgres connections
   3. github.com/nu7hatch/gouuid for generating UUID
+  4. gopkg.in/ini.v1 for reading .ini files
