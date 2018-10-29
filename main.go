@@ -34,7 +34,6 @@ var SessionManager = session.InitManager()
 func addSession(w http.ResponseWriter, r *http.Request) {
 	session := SessionManager.AddSession("localhost")
 	b, _ := json.Marshal(session)
-	fmt.Println("added session", string(b))
 	fmt.Fprintf(w, string(b))
 }
 
@@ -50,7 +49,6 @@ func rmSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session, success := SessionManager.RemoveSession(uuid[0])
-	fmt.Println("removed session", uuid)
 	if success {
 		fmt.Fprintf(w, string(session))
 	} else {
@@ -98,21 +96,17 @@ func processSession(w http.ResponseWriter, r *http.Request) {
 	if mok {
 		mode = _mode[0]
 	}	
-	fmt.Println("Processing session with", timeout, uuid, mode)
 	// now if we are going to live mode then we spawn a new goroutine and return immediately
 	// otherwise if we are in batch mode then we block until we process all messages
 	// else we return an error message stating we don't know how to handle the given mode
 	if mode == "live" {
-		fmt.Println("Running in live mode")
 		go SessionManager.ProcessSession(uuid, timeout) // don't block
 	} else if mode == "batch"{
-		fmt.Println("Running in batch mode")
 		SessionManager.ProcessSession(uuid, timeout) // block
 	} else {
 		fmt.Fprintf(w, "Wrong mode supplied, mode should be `batch` or `live`") // undefined mode is given
 		return
 	}
-	fmt.Println("Done processing for", uuid)
 	fmt.Fprintf(w, "OK")
 }
 

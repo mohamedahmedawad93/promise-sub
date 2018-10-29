@@ -44,7 +44,6 @@ func (sm *SessionManager) RemoveSession(uuid string) ([]byte, bool) {
 	bs.Close()
 	b, err := json.Marshal(bs)
 	delete(sm.Sessions, uuid)
-	fmt.Println("returned from delete from map")
 	return b, err==nil
 }
 
@@ -60,7 +59,6 @@ func (sm *SessionManager) ProcessSession(uuid string, timeout int) {
 	for msg := range messages { // loop over messages and save them
 		var employee_id int
 		stmt := fmt.Sprintf(`INSERT INTO EMPLOYEES(name, mail) VALUES('%s', '%s') RETURNING id`, msg.Name, msg.Mail)
-		fmt.Println(stmt)
 		err := sm._db.QueryRow(stmt).Scan(&employee_id)
 		if err==nil {
 			bs.Saved++

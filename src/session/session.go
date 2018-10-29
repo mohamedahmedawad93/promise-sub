@@ -15,7 +15,6 @@ import (
 	"github.com/nu7hatch/gouuid"
 	"time"
 	"log"
-	"fmt"
 	"encoding/json"
 )
 
@@ -108,7 +107,6 @@ func (bs *BatchSession) FetchAll(client_messages chan Message, timeout int) {
 	}
 	msgs := make(chan string) // initializes the message channel
 	go bs._rc.Messages(bs._q, msgs)
-	fmt.Println("msgs", msgs)
 	go func() {
 		// now we are doing something smart in contrast of for msg := range messages
 		// one mistake in the range pattern is when the producer of the channel gets blocked

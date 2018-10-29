@@ -125,7 +125,6 @@ func (rc *RabbitConnection) RemQ(q *RabbitQ) {
 		true ,    // noWait
 	)
 	if (err != nil) {
-		fmt.Println("Couldnt remove queue")
 	}
 }
 
@@ -143,7 +142,6 @@ func (rc *RabbitConnection) Messages(q *RabbitQ, string_msgs chan string) {
 	if (err != nil) {
 		log.Fatalf("Couldnt consume")
 	}
-	fmt.Println("string channel", string_msgs)
 	for d := range raw_msgs {
 		if d.Body != nil {
 			string_msgs <- string(d.Body[:]) // convert to string and redirect
