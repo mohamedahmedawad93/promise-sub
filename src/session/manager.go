@@ -25,7 +25,7 @@ type SessionManager struct {
 
 // this methods creates new session, saves it in the Sessions map with its UUID as key and returns it
 func (sm *SessionManager) AddSession(host string) *BatchSession {
-	bs := NewSession("localhost")
+	bs := NewSession(host)
 	sm.Sessions[bs.ID()] = bs
 	return bs
 }
@@ -95,10 +95,12 @@ func (sm *SessionManager) GetSession(uuid string) (*BatchSession, bool) {
 }
 
 // initializes the mannager and connects to the database
-func InitManager() *SessionManager {
+func InitManager(host string, port string, user string, pass string, dbname string) *SessionManager {
 	sm := SessionManager{}
 	sm.Sessions = make(map[string] *BatchSession)
-	connStr := "postgres://fincompare:Mix993xxx@localhost/fincompare?sslmode=disable"
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", 
+							user, pass, host, port, dbname)
+	fmt.Println("connStr", connStr)
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatal(err)

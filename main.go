@@ -2,6 +2,10 @@ package main
 /*
 This is the main entry point for the program
 
+The program requires the production.ini file to be fully populated with
+	1. rabbit section
+	2. database section
+
 In here we only define the endpoints and their handlers
 	GET /create/ 			  creates new session and returns the session object
 	GET /remove/?uuid=... 	  removes a session given a mandatory uuid in the querystring
@@ -16,23 +20,51 @@ In here we only define the endpoints and their handlers
 import (
 	"session"
 	"fmt"
+	"os"
 	"net/http"
 	"log"
 	"strconv"
 	"encoding/json"
+	"gopkg.in/ini.v1"
 )
+
+
+// the following function parses a .ini file and returns a *ini.File 
+// 		or exits in case the file doesn't exist or has a corrupted format
+func parse_ini(file string) *ini.File {
+	cfg, err := ini.Load("production.ini")
+	if err != nil {
+		fmt.Printf("Fail to read file: %v", err)
+		os.Exit(1)
+	}
+	return cfg
+}
+
+var cfg = parse_ini("production.ini")
+
+var RABBIT_HOST = cfg.Section("rabbit").Key("host").String()
+
+var POSTGRES_HOST = cfg.Section("database").Key("host").String()
+var POSTGRES_PORT = cfg.Section("database").Key("port").String()
+var POSTGRES_USER = cfg.Section("database").Key("user").String()
+var POSTGRES_PASSWORD = cfg.Section("database").Key("password").String()
+var POSTGRES_DBNAME = cfg.Section("database").Key("dbname").String()
 
 
 // Instantiate the ServerManager object
 // It is really important to note that the server should only have one ServerManager instance
 // It is not straight forward to implement a singletone struct like the Java world, so we just create one instance like this
-var SessionManager = session.InitManager()
+var SessionManager = session.InitManager(POSTGRES_HOST,
+										 POSTGRES_PORT,
+										 POSTGRES_USER,
+										 POSTGRES_PASSWORD,
+										 POSTGRES_DBNAME)
 
 
 // GET /create/ handler
 // takes no input and returns a session object as json
 func addSession(w http.ResponseWriter, r *http.Request) {
-	session := SessionManager.AddSession("localhost")
+	session := SessionManager.AddSession(RABBIT_HOST)
 	b, _ := json.Marshal(session)
 	fmt.Fprintf(w, string(b))
 }
